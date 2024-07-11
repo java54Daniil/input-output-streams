@@ -2,19 +2,22 @@ package telran.io.test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.jupiter.api.AfterAll;
-
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashSet;
+import java.util.Set;
 class InputOutputTest {
 
 	private static final String STREAM_FILE = "stream-file";
 	private static final String HELLO = "Hello";
 	private static final String WRITER_FILE = "writer-file";
+	protected static final int SPACES_PER_DEPTH_LEVEL = 2;
 @AfterAll
  static void tearDown() throws IOException {
 	Files.deleteIfExists(Path.of(STREAM_FILE));
@@ -63,40 +66,59 @@ class InputOutputTest {
 	}
 	@Test
 	void printDirectoryTest() throws IOException {
-		printDirectory("..", 3);
+		printDirectory("/", 2);
 	}
 	private void printDirectory(String dirPathStr, int depth) throws IOException {
-		//TODO
 		//print directory content in the format with offset according to the level
 		//if depth == -1 all levels should be printed out
 		// <name> - <dir / file>
 		//      <name> 
 		//using FIles.walkFileTree
-		Path path = Path.of(dirPathStr).toAbsolutePath().normalize();
-		//TODO
-		Files.walkFileTree(path, new HashSet<>(), depth, new FileVisitor<Path>() {
+		Path pathParam = Path.of(dirPathStr);
+		if (!Files.isDirectory(pathParam)) {
+			throw new IllegalArgumentException("not directory");
+		}
+		Path path = pathParam.toAbsolutePath().normalize();
+		int count = path.getNameCount();
+		System.out.println("directory: " + path);
+		Files.walkFileTree(path, new HashSet<>(), depth <= 0 ? Integer.MAX_VALUE : depth, new FileVisitor<Path>() {
 
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+				if (!Files.isSameFile(path, dir)) {
+					printPathWithOffset(dir);
+				}
 				return FileVisitResult.CONTINUE;
+			}
+
+			private void printPathWithOffset(Path path) {
+				System.out.printf("%s%s - %s\n", " ".repeat(getSpacesNumber(path)),
+						path.getFileName(), Files.isDirectory(path) ? "dir" : "file");
+				
+			}
+
+			private int getSpacesNumber(Path path) {
+				return (path.getNameCount() - count) * SPACES_PER_DEPTH_LEVEL;
 			}
 
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
+				printPathWithOffset(file);
+				return FileVisitResult.CONTINUE;
 			}
 
 			@Override
 			public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
+				System.err.println("error: " + exc);
+				return FileVisitResult.CONTINUE;
 			}
 
 			@Override
 			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-				// TODO Auto-generated method stub
-				return null;
+				if (exc != null) {
+					System.err.println("error: " + exc);
+				}
+				return FileVisitResult.CONTINUE;
 			}
 		});
 		
